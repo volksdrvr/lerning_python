@@ -1,0 +1,71 @@
+from collections import defaultdict
+#import ngw_change as ngw
+
+#################################################################################
+# The name of the natgateway is stored as a constant defined with the name of the
+# service(s) affected. Use the job to set the variable targeted_nats for the key
+# of RESOURCE_ENV which is a dictionary of string arrays each AWS resource tag
+# name of each affected nat gateway.
+
+# CONST_VARS
+RESOURCE_ENV = {
+    "k8s-non-prod": ['k8s-env-delete-me0'],
+    "k8s-prod": ['k8s-env-delete-me0', 'k8s-env-delete-me1']
+}
+
+# passed_vars
+targeted_aws_region = 'us-west-2'
+targeted_nats = "k8s-prod"
+
+# defined_vars
+def return_ngw_atributes(nats_to_return):
+    import ngw_change as ngw
+    ngw_instances = defaultdict()
+    ngw_instances = ngw.describe_gateway.describe_ngw(nats_to_return)
+    #print (ngw_instances)
+
+    for ngw in ngw_instances:
+        for tag in ngw_instances['Tags']:
+            #print (tag)
+            if 'Name' in tag['Key']:
+                tag_name = tag['Value']
+                #print(tag_name)
+                break
+        
+        ngw_instances[tag_name] = {
+            'NetworkInterfaceId': ngw_instances['NatGatewayAddresses'][0]['NetworkInterfaceId'],
+            'ConnectivityType': ngw_instances['ConnectivityType'],
+            'NatGatewayId': ngw_instances['NatGatewayId'],
+            'AllocationId': ngw_instances['NatGatewayAddresses'][0]['AllocationId'],
+            'PrivateIp': ngw_instances['NatGatewayAddresses'][0]['PrivateIp'],
+            'PublicIp': ngw_instances['NatGatewayAddresses'][0]['PublicIp'],
+            'SubnetId': ngw_instances['SubnetId'],
+            'State': ngw_instances['State'],
+            'Tags': ngw_instances['Tags'], 
+        }
+    return ngw_instances
+
+#################################################################################
+# Make note of the associated with the NAT Gateway
+# Obtain all of the needed argumnets to delete\create a natgateway while
+# maintaining the current attributes using the same EIP and to increment the
+# avalability zone by 1.
+
+ngw_orig_attributes = defaultdict(return_ngw_atributes(RESOURCE_ENV[targeted_nats]))
+
+print ('\nThe following resources will be deleted and re-created:')
+for foo, bar in ngw_orig_attributes.items():
+    print (foo)
+    for fubar, barfoo in bar.items():
+        print ("{}: {}".format(fubar, barfoo))
+    print ('\n')
+
+#################################################################################
+# Delete the NAT Gateway
+
+
+#################################################################################
+# Create new NAT Gateway with the same elastic ip address found in step 1
+
+#################################################################################
+# Update Route Tables associated with the  private subnets in the VPC to to use the new NAT Gateway
